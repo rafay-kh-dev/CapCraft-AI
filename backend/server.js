@@ -1,11 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// App Initialization (Yeh delete ho gaya tha aap se)
+// App Initialization
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -24,6 +25,14 @@ const chatSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 const Chat = mongoose.model('Chat', chatSchema);
+
+// User Schema for Authentication
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
+});
+const User = mongoose.model('UserAuth', userSchema);
 
 // Get All Chats for a User
 app.get('/api/chats/:email', async (req, res) => {
@@ -78,7 +87,6 @@ app.post('/api/generate', async (req, res) => {
       systemMessage += " Generate a mix of 15-20 viral, trending, and niche hashtags. Output ONLY the hashtags separated by spaces (e.g., #tech #innovation).";
     }
 
-    // Terminal log mein strict warning thi isliye hum 3.8-flash default rakhenge
     const selectedModel = modelName || "gemini-3.8-flash"; 
     
     const model = genAI.getGenerativeModel({ 
@@ -86,18 +94,15 @@ app.post('/api/generate', async (req, res) => {
       systemInstruction: systemMessage 
     });
     
-    // Format previous messages for Gemini API
     const formattedHistory = (history || []).map(msg => ({
       role: msg.role === 'ai' ? 'model' : 'user',
       parts: [{ text: msg.content }]
     }));
 
-    // Start a chat session with the historical memory
     const chat = model.startChat({
       history: formattedHistory
     });
     
-    // Send the new prompt into the ongoing chat
     const result = await chat.sendMessage(prompt);
     const responseText = result.response.text();
 
@@ -122,21 +127,6 @@ app.post('/api/google-auth', async (req, res) => {
     res.status(500).json({ success: false, message: "Server error during Google auth" });
   }
 });
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Node.js Server running on port ${PORT}`);
-});
-
-const bcrypt = require('bcryptjs'); // Agar password hash karna ho
-
-// User Schema for Authentication
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
-});
-const User = mongoose.model('UserAuth', userSchema);
 
 // Signup Route
 app.post('/api/signup', async (req, res) => {
@@ -174,4 +164,10 @@ app.post('/api/login', async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error during login." });
   }
+});
+
+// Server Listener (Hamesha aakhir mein hona chahiye)
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Node.js Server running on port ${PORT}`);
 });
