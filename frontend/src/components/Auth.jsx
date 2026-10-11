@@ -11,7 +11,6 @@ const Auth = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // JWT Token ko securely decode karne ka function
   const parseJwt = (token) => {
     try {
       const base64Url = token.split(".")[1];
@@ -30,7 +29,6 @@ const Auth = ({ onLogin }) => {
     }
   };
 
-  // 1. AUTOMATIC GOOGLE ONE TAP LOGIN
   useGoogleOneTapLogin({
     onSuccess: async (credentialResponse) => {
       setLoading(true);
@@ -67,7 +65,6 @@ const Auth = ({ onLogin }) => {
     onError: () => console.log("One Tap Login was dismissed or failed."),
   });
 
-  // 2. MANUAL GOOGLE BUTTON LOGIN (Backup)
   const loginWithGoogle = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setLoading(true);
@@ -185,6 +182,15 @@ const Auth = ({ onLogin }) => {
               className="text-[#0064e0] font-semibold hover:underline transition-all"
             >
               codelume.online
+            </a>{" "}
+            | Developed by{" "}
+            <a
+              href="https://codelume.online/about"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#0064e0] font-semibold hover:underline transition-all"
+            >
+              Rafay
             </a>
           </p>
         </div>
