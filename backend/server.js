@@ -171,3 +171,103 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Node.js Server running on port ${PORT}`);
 });
+
+app.delete('/api/chats/:id', async (req, res) => {
+  try {
+    await Chat.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+});
+
+// APIs call karne ke functions banayen
+const callGeminiAPI = async (prompt) => {
+  // Aapka mojooda Gemini fetch code yahan aayega
+  // Agar limit cross hogi toh yeh throw Error karega
+};
+
+const callGroqAPI = async (prompt) => {
+  // Groq API ko call karne ka code
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer YOUR_GROQ_API_KEY`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "llama3-8b-8192",
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  
+  if (!response.ok) throw new Error("Groq API Failed");
+  const data = await response.json();
+  return data.choices[0].message.content;
+};
+
+const callOpenRouterAPI = async (prompt) => {
+  // OpenRouter Free Models ko call karne ka code
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer YOUR_OPENROUTER_KEY`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "openrouter/auto", // Ya koi specific free model
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  if (!response.ok) throw new Error("OpenRouter API Failed");
+  const data = await response.json();
+  return data.choices[0].message.content;
+};
+
+// Main Generate Route
+app.post('/api/generate', async (req, res) => {
+  const { prompt } = req.body;
+
+  // Fallback Array - System is sequence mein try karega
+  const aiProviders = [
+    { name: "Gemini", generate: callGeminiAPI },
+    { name: "Groq", generate: callGroqAPI },
+    { name: "OpenRouter", generate: callOpenRouterAPI }
+  ];
+
+  let finalResponse = null;
+  let successfulProvider = null;
+
+  // Loop through providers until one works
+  for (let provider of aiProviders) {
+    try {
+      console.log(`Trying to generate with ${provider.name}...`);
+      
+      finalResponse = await provider.generate(prompt);
+      successfulProvider = provider.name;
+      
+      // Agar response mil gaya, toh loop break kar dein
+      break; 
+
+    } catch (error) {
+      console.log(`${provider.name} failed or limit reached. Trying next...`);
+      // Loop automatically agle provider par chala jayega
+    }
+  }
+
+  // Check if all providers failed
+  if (!finalResponse) {
+    return res.status(500).json({ 
+      success: false, 
+      message: "All AI servers are currently busy. Please try again later." 
+    });
+  }
+
+  // Return successful response to frontend
+  res.json({ 
+    success: true, 
+    text: finalResponse,
+    providerUsed: successfulProvider 
+  });
+});
