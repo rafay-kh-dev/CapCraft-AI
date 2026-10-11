@@ -20,14 +20,15 @@ import {
   MessageCircle,
   Sparkles,
   FileText,
-  ChevronDown, // Dropdown ke liye naya icon
+  ChevronDown,
+  Loader2,
 } from "lucide-react";
 
 const Dashboard = ({ user, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false); // Model switcher state
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState("general");
   const [prompt, setPrompt] = useState("");
@@ -39,17 +40,41 @@ const Dashboard = ({ user, onLogout }) => {
   const [recentChats, setRecentChats] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
 
-  // Available Models List
+  // Dynamic Thinking State Logic
+  const thinkingSteps = [
+    "Analyzing your request...",
+    "Gathering context...",
+    "Processing logic...",
+    "Crafting perfect response...",
+  ];
+  const [thinkingStep, setThinkingStep] = useState(thinkingSteps[0]);
+
+  useEffect(() => {
+    let interval;
+    if (isGenerating) {
+      let stepIndex = 0;
+      interval = setInterval(() => {
+        stepIndex = (stepIndex + 1) % thinkingSteps.length;
+        setThinkingStep(thinkingSteps[stepIndex]);
+      }, 1800); // Har 1.8 seconds ke baad text change hoga
+    } else {
+      setThinkingStep(thinkingSteps[0]);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
+
+  // CapCraft Models List (Purane 2.5 models remove kar diye gaye hain)
   const aiModels = [
-    { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" },
-    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
-    { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro" },
-    { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash" },
+    { id: "gemini-3.8-flash", name: "CapCraft 3.8 Flash (Fast)" },
+    { id: "gemini-3.8-live-extended-thinking", name: "CapCraft 3.8 Extended" },
+    { id: "gemini-3.6-flash", name: "CapCraft 3.6 Flash" },
+    { id: "gemini-3.5-flash-lite", name: "CapCraft 3.5 Lite" },
+    { id: "gemini-3.1-pro-preview", name: "CapCraft 3.1 Pro (Smart)" },
   ];
 
-  // Defaulting to 2.5 Flash to avoid 503 rush on 3.8
-  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash");
-
+  // Default model ab strictly 3.8-flash set karna lazmi hai
+  // Default model ko 3.6 set kar dein taake direct yahi chale
+  const [selectedModel, setSelectedModel] = useState("gemini-3.6-flash");
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   useEffect(() => {
@@ -129,21 +154,18 @@ const Dashboard = ({ user, onLogout }) => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isGenerating]);
 
-  // Click outside listener logic
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
         isDropdownOpen &&
         !event.target.closest(".profile-dropdown-container")
-      ) {
+      )
         setIsDropdownOpen(false);
-      }
       if (
         isModelDropdownOpen &&
         !event.target.closest(".model-dropdown-container")
-      ) {
+      )
         setIsModelDropdownOpen(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -185,9 +207,9 @@ const Dashboard = ({ user, onLogout }) => {
     const userText = prompt.trim();
     setPrompt("");
 
-    const chatHistory = [...messages];
-    const newMessages = [...messages, { role: "user", content: userText }];
-    setMessages(newMessages);
+    // Fixed React State Bug: Local variable mein array save kar ke bhejna zaroori hai
+    const messagesWithUser = [...messages, { role: "user", content: userText }];
+    setMessages(messagesWithUser);
     setIsGenerating(true);
 
     try {
@@ -197,30 +219,30 @@ const Dashboard = ({ user, onLogout }) => {
         body: JSON.stringify({
           prompt: userText,
           type: activeTab,
-          history: chatHistory,
-          modelName: selectedModel, // Frontend se selected model bhej rahe hain
+          history: messages,
+          modelName: selectedModel,
         }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        const updatedMessages = [
-          ...newMessages,
+        const finalMessages = [
+          ...messagesWithUser,
           { role: "ai", content: data.text },
         ];
-        setMessages(updatedMessages);
-        saveChatToDB(updatedMessages, currentChatId);
+        setMessages(finalMessages);
+        saveChatToDB(finalMessages, currentChatId);
       } else {
         setMessages([
-          ...newMessages,
+          ...messagesWithUser,
           { role: "ai", content: "Error: " + data.message },
         ]);
       }
     } catch (error) {
       setMessages([
-        ...newMessages,
-        { role: "ai", content: "Server connection failed." },
+        ...messagesWithUser,
+        { role: "ai", content: "Server connection failed. Please try again." },
       ]);
     } finally {
       setIsGenerating(false);
@@ -276,11 +298,6 @@ const Dashboard = ({ user, onLogout }) => {
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
-        
-        .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 
         .markdown-body { font-size: 14.5px; line-height: 1.65; color: #1e293b; }
         .markdown-body p { margin-bottom: 0.8em; }
@@ -429,7 +446,6 @@ const Dashboard = ({ user, onLogout }) => {
 
       {/* MAIN WORKSPACE */}
       <main className="animate-workspace flex-1 flex flex-col h-full min-w-0 relative">
-        {/* Toggle Sidebar Button */}
         <div
           className={`absolute top-5 left-5 z-20 transition-opacity duration-300 ${isSidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"}`}
         >
@@ -441,47 +457,11 @@ const Dashboard = ({ user, onLogout }) => {
           </button>
         </div>
 
-        {/* ChatGPT Style Model Switcher (Top Center) */}
-        <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 model-dropdown-container">
-          <button
-            onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-            className="flex items-center gap-2 px-3.5 py-2 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-xl shadow-sm hover:bg-slate-50 transition-all text-[13.5px] font-semibold text-slate-700 cursor-pointer"
-          >
-            <Sparkles size={14} className="text-[#0064e0]" />
-            {aiModels.find((m) => m.id === selectedModel)?.name}
-            <ChevronDown size={14} className="text-slate-400 ml-1" />
-          </button>
-
-          {isModelDropdownOpen && (
-            <div className="absolute top-full mt-2 w-52 bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="px-3 py-2 border-b border-slate-100">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Select AI Model
-                </span>
-              </div>
-              <div className="p-1">
-                {aiModels.map((model) => (
-                  <button
-                    key={model.id}
-                    onClick={() => {
-                      setSelectedModel(model.id);
-                      setIsModelDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2.5 text-[13px] rounded-lg transition-colors cursor-pointer ${selectedModel === model.id ? "text-[#0064e0] font-bold bg-[#EBF3FF]/60" : "text-slate-600 font-medium hover:bg-slate-50"}`}
-                  >
-                    {model.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-4 relative z-10 scroll-smooth flex flex-col">
           <div className="max-w-[800px] mx-auto w-full h-full flex flex-col justify-between relative">
-            <div className="flex-1 flex flex-col pb-4 pt-10">
+            <div className="flex-1 flex flex-col pb-4">
               {messages.length === 0 ? (
-                <div className="flex-1 flex flex-col justify-center py-10 mt-4">
+                <div className="flex-1 flex flex-col justify-center py-10 mt-10">
                   <div className="flex flex-col items-center text-center mb-7">
                     <div className="flex items-center justify-center w-12 h-12 bg-white rounded-[14px] shadow-sm border border-slate-200/60 mb-5 relative overflow-hidden group">
                       <img
@@ -585,6 +565,7 @@ const Dashboard = ({ user, onLogout }) => {
                     </div>
                   ))}
 
+                  {/* Advanced Dynamic Thinking Status */}
                   {isGenerating && (
                     <div className="flex gap-4 sm:gap-5 w-full items-start">
                       <div className="shrink-0 mt-1">
@@ -592,16 +573,18 @@ const Dashboard = ({ user, onLogout }) => {
                           <img
                             src="/favicon.svg"
                             alt="AI"
-                            className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse"
+                            className="w-5 h-5 sm:w-6 sm:h-6 opacity-70"
                           />
                         </div>
                       </div>
-                      <div className="bg-transparent rounded-2xl px-1 py-3 flex items-center gap-3 h-[48px] w-fit">
-                        <div className="flex gap-1.5 mt-[1px]">
-                          <div className="w-2 h-2 bg-[#0064e0]/60 rounded-full typing-dot"></div>
-                          <div className="w-2 h-2 bg-[#0064e0]/60 rounded-full typing-dot"></div>
-                          <div className="w-2 h-2 bg-[#0064e0]/60 rounded-full typing-dot"></div>
-                        </div>
+                      <div className="bg-slate-50 border border-slate-200/60 rounded-[18px] px-4 py-3 flex items-center gap-3 w-fit mt-1">
+                        <Loader2
+                          size={16}
+                          className="text-[#0064e0] animate-spin"
+                        />
+                        <span className="text-[13px] font-semibold text-slate-600 tracking-wide transition-all">
+                          {thinkingStep}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -610,28 +593,73 @@ const Dashboard = ({ user, onLogout }) => {
               )}
             </div>
 
-            <div className="shrink-0 pt-2 pb-6 bg-white w-full mx-auto relative z-20">
-              <div className="relative group bg-[#f0f4f9] rounded-[24px] border border-transparent focus-within:border-slate-300 focus-within:bg-white focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-all duration-300">
+            {/* Gemini-Style Input Box With Integrated Model Switcher */}
+            <div className="shrink-0 pt-2 pb-6 w-full mx-auto relative z-20">
+              <div className="relative flex flex-col bg-[#f0f4f9] rounded-[24px] border border-transparent focus-within:border-slate-300 focus-within:bg-white focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-all duration-300 p-1.5">
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={placeholderText}
                   disabled={isGenerating}
-                  className="w-full bg-transparent pl-6 pr-14 py-4 text-slate-800 placeholder-slate-500 focus:outline-none resize-none min-h-[56px] max-h-[160px] overflow-y-auto block text-[14.5px] font-medium disabled:opacity-50"
+                  className="w-full bg-transparent px-4 pt-3 pb-2 text-slate-800 placeholder-slate-500 focus:outline-none resize-none min-h-[50px] max-h-[160px] overflow-y-auto block text-[14.5px] font-medium disabled:opacity-50"
                   rows="1"
                 />
-                <button
-                  onClick={handleSend}
-                  disabled={!prompt.trim() || isGenerating}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-slate-900 disabled:bg-transparent disabled:text-slate-400 text-white rounded-full transition-all duration-200 disabled:shadow-none shadow-sm active:scale-95 cursor-pointer"
-                >
-                  <Send
-                    size={16}
-                    strokeWidth={2}
-                    className="relative right-[1px] bottom-[1px] disabled:opacity-50"
-                  />
-                </button>
+
+                <div className="flex justify-between items-center px-2 pb-1.5 pt-1">
+                  {/* Model Switcher Inside Input Area */}
+                  <div className="relative model-dropdown-container">
+                    <button
+                      onClick={() =>
+                        setIsModelDropdownOpen(!isModelDropdownOpen)
+                      }
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200/80 rounded-[12px] hover:bg-slate-50 transition-all text-[12px] font-semibold text-slate-600 cursor-pointer shadow-sm"
+                    >
+                      <Sparkles size={13} className="text-[#0064e0]" />
+                      {aiModels.find((m) => m.id === selectedModel)?.name}
+                      <ChevronDown
+                        size={13}
+                        className="text-slate-400 ml-0.5"
+                      />
+                    </button>
+
+                    {isModelDropdownOpen && (
+                      <div className="absolute bottom-full left-0 mb-3 w-56 bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 z-50">
+                        <div className="px-3 py-2 border-b border-slate-100">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Select AI Model
+                          </span>
+                        </div>
+                        <div className="p-1.5 flex flex-col gap-0.5">
+                          {aiModels.map((model) => (
+                            <button
+                              key={model.id}
+                              onClick={() => {
+                                setSelectedModel(model.id);
+                                setIsModelDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2.5 text-[12.5px] rounded-lg transition-colors cursor-pointer ${selectedModel === model.id ? "text-[#0064e0] font-bold bg-[#EBF3FF]/60" : "text-slate-600 font-medium hover:bg-slate-50"}`}
+                            >
+                              {model.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleSend}
+                    disabled={!prompt.trim() || isGenerating}
+                    className="w-9 h-9 flex items-center justify-center bg-slate-800 hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-full transition-all duration-200 disabled:shadow-none shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    <Send
+                      size={15}
+                      strokeWidth={2}
+                      className="relative right-[1px] bottom-[1px] disabled:opacity-50"
+                    />
+                  </button>
+                </div>
               </div>
               <p className="text-center text-[11.5px] text-slate-400 mt-3 font-medium tracking-wide">
                 CapCraft AI can make mistakes. Consider verifying important
