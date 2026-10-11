@@ -11,6 +11,9 @@ const Auth = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Dynamic API URL for both Localhost and Live Production
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const parseJwt = (token) => {
     try {
       const base64Url = token.split(".")[1];
@@ -36,17 +39,14 @@ const Auth = ({ onLogin }) => {
       try {
         const decodedUser = parseJwt(credentialResponse.credential);
 
-        const backendRes = await fetch(
-          "http://localhost:5000/api/google-auth",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: decodedUser.name,
-              email: decodedUser.email,
-            }),
-          },
-        );
+        const backendRes = await fetch(`${API_URL}/api/google-auth`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: decodedUser.name,
+            email: decodedUser.email,
+          }),
+        });
 
         const data = await backendRes.json();
 
@@ -78,17 +78,14 @@ const Auth = ({ onLogin }) => {
         );
         const googleUser = await userInfoRes.json();
 
-        const backendRes = await fetch(
-          "http://localhost:5000/api/google-auth",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: googleUser.name,
-              email: googleUser.email,
-            }),
-          },
-        );
+        const backendRes = await fetch(`${API_URL}/api/google-auth`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: googleUser.name,
+            email: googleUser.email,
+          }),
+        });
 
         const data = await backendRes.json();
 
@@ -116,7 +113,7 @@ const Auth = ({ onLogin }) => {
     const payload = isLogin ? { email, password } : { name, email, password };
 
     try {
-      const response = await fetch(`http://localhost:5000/api/${endpoint}`, {
+      const response = await fetch(`${API_URL}/api/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
