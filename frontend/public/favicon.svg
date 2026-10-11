@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Top-Left Content Block (Light Blue) -->
+  <rect x="40" y="40" width="200" height="200" rx="56" fill="#93c5fd" />
+  
+  <!-- Bottom-Left Content Block (Primary Deep Blue) -->
+  <rect x="40" y="272" width="200" height="200" rx="56" fill="#0064e0" />
+  
+  <!-- Bottom-Right Content Block (Medium Blue) -->
+  <rect x="272" y="272" width="200" height="200" rx="56" fill="#3b82f6" />
+  
+  <!-- Top-Right AI Magic Spark (Primary Deep Blue) -->
+  <path d="M 372 40 
+           Q 372 140 472 140 
+           Q 372 140 372 240 
+           Q 372 140 272 140 
+           Q 372 140 372 40 Z" 
+        fill="#0064e0" />
+</svg>
