@@ -127,3 +127,51 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Node.js Server running on port ${PORT}`);
 });
+
+const bcrypt = require('bcryptjs'); // Agar password hash karna ho
+
+// User Schema for Authentication
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
+});
+const User = mongoose.model('UserAuth', userSchema);
+
+// Signup Route
+app.post('/api/signup', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: "Email already registered." });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password: hashedPassword });
+    await newUser.save();
+    res.json({ success: true, message: "Account created successfully." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error during signup." });
+  }
+});
+
+// Login Route
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found." });
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Invalid credentials." });
+    }
+    res.json({ 
+      success: true, 
+      user: { name: user.name, email: user.email } 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error during login." });
+  }
+});
