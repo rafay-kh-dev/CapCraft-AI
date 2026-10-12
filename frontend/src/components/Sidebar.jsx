@@ -31,25 +31,26 @@ const Sidebar = ({
 }) => {
   const [chatToDelete, setChatToDelete] = useState(null);
 
+  // YAHAN WORDING UPDATE KI GAYI HAI
   const navItems = [
     {
       id: "general",
-      label: "General Chat",
+      label: "Smart Chat",
       icon: <Sparkles size={16} strokeWidth={1.5} />,
     },
     {
       id: "caption",
-      label: "AI Caption Generator",
+      label: "Caption Studio",
       icon: <PenTool size={16} strokeWidth={1.5} />,
     },
     {
       id: "article",
-      label: "Article Writing",
+      label: "Article Writer",
       icon: <FileText size={16} strokeWidth={1.5} />,
     },
     {
       id: "hashtags",
-      label: "Viral Hashtags",
+      label: "Trending Tags",
       icon: <Hash size={16} strokeWidth={1.5} />,
     },
   ];
@@ -103,8 +104,9 @@ const Sidebar = ({
             </button>
 
             <div className="flex flex-col gap-1 mb-6">
+              {/* YAHAN HEADING UPDATE KI GAYI HAI */}
               <div className="text-[11px] font-bold text-[#444746] mb-1 px-3 uppercase tracking-wider">
-                AI Tools
+                Workspace
               </div>
               {navItems.map((item) => (
                 <button

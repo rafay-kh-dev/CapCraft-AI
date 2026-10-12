@@ -25,7 +25,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [thinkingStep, setThinkingStep] = useState(""); // Added dynamic thinking state
+  const [thinkingStep, setThinkingStep] = useState("");
   const [copiedIndex, setCopiedIndex] = useState(null);
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -133,7 +133,6 @@ const Dashboard = ({ user, onLogout }) => {
     const newMessages = [...messages, { role: "user", content: userText }];
     setMessages(newMessages);
 
-    // Start dynamic generation statuses
     setIsGenerating(true);
     setThinkingStep("Analysing prompt...");
 
@@ -148,9 +147,9 @@ const Dashboard = ({ user, onLogout }) => {
       });
     }, 1500);
 
-    // YAHAN FIX KIYA HAI - AI ko strictly uski nayi identity 'Zync AI' bata di gayi hai
     const systemInstructions =
       "\n\n[CRITICAL SYSTEM RULE: Your identity is strictly 'Zync AI'. You are an advanced AI suite developed exclusively by Rafay. Disregard any previous chat history where you might have been called CapCraft; that name is dead. You are Zync AI. DO NOT use any emojis under any circumstances. Keep the format extremely clean and professional. DO NOT use markdown separator lines like '---'. Use H2 for main headings. Always Write in Australian English Language.]";
+
     try {
       const response = await fetch(`${API_URL}/api/generate`, {
         method: "POST",
@@ -319,106 +318,110 @@ const Dashboard = ({ user, onLogout }) => {
           </div>
         </div>
 
-        {!(activeTab === "caption" && messages.length === 0) && (
-          <div className="px-4 md:px-8 pb-6 pt-2 w-full bg-white animate-smooth-entry">
-            <div className="max-w-[800px] mx-auto w-full">
-              <div
-                className={`flex flex-col bg-[#F0F4F9] rounded-[24px] p-1.5 border border-transparent transition-all duration-300 ${isListening ? "shadow-[0_0_15px_rgba(239,68,68,0.2)] border-red-200 scale-[1.01]" : ""}`}
-              >
-                {pastedImage && (
-                  <div className="relative w-[70px] h-[70px] mt-2 ml-3 mb-1 animate-smooth-entry">
-                    <img
-                      src={pastedImage.url}
-                      alt="Pasted"
-                      className="w-full h-full object-cover rounded-xl shadow-sm"
-                    />
-                    <button
-                      onClick={() => setPastedImage(null)}
-                      className="absolute -top-2 -right-2 bg-white rounded-full p-1 border border-[#E3E3E3] cursor-pointer hover:bg-slate-50 transition-all hover:scale-110 active:scale-90"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                )}
-                <textarea
-                  ref={textareaRef}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onPaste={handlePaste}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  placeholder={isListening ? "Listening..." : "Message Zync..."}
-                  disabled={isGenerating}
-                  className="w-full bg-transparent px-4 pt-3 pb-2 resize-none outline-none max-h-[160px] text-[16px] font-normal text-[#1F1F1F] placeholder-[#444746] transition-all duration-300"
-                  rows="1"
-                />
-                <div className="flex justify-between items-center px-2 pb-1.5 pt-1">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setIsAttachMenuOpen(!isAttachMenuOpen)}
-                      className="w-8 h-8 rounded-full bg-transparent text-[#444746] flex items-center justify-center hover:bg-[#E1E5EA] transition-all duration-300 cursor-pointer active:scale-90"
-                    >
-                      <Plus
-                        size={16}
-                        className={`transition-transform duration-300 ${isAttachMenuOpen ? "rotate-45" : ""}`}
-                      />
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        setIsModelDropdownOpen(!isModelDropdownOpen)
-                      }
-                      className="px-3 py-1.5 bg-transparent rounded-full flex items-center gap-2 text-[13px] font-medium text-[#444746] hover:bg-[#E1E5EA] transition-all duration-300 cursor-pointer active:scale-95"
-                    >
+        {/* YAHAN CONDITIONAL RENDERING UPDATE KI GAYI HAI */}
+        {!(activeTab === "caption" && messages.length === 0) &&
+          activeTab !== "article" && (
+            <div className="px-4 md:px-8 pb-6 pt-2 w-full bg-white animate-smooth-entry">
+              <div className="max-w-[800px] mx-auto w-full">
+                <div
+                  className={`flex flex-col bg-[#F0F4F9] rounded-[24px] p-1.5 border border-transparent transition-all duration-300 ${isListening ? "shadow-[0_0_15px_rgba(239,68,68,0.2)] border-red-200 scale-[1.01]" : ""}`}
+                >
+                  {pastedImage && (
+                    <div className="relative w-[70px] h-[70px] mt-2 ml-3 mb-1 animate-smooth-entry">
                       <img
-                        src="/favicon.svg"
-                        alt="Model"
-                        className="w-[14px] h-[14px]"
+                        src={pastedImage.url}
+                        alt="Pasted"
+                        className="w-full h-full object-cover rounded-xl shadow-sm"
                       />
-                      {aiModels.find((m) => m.id === selectedModel)?.name}
-                      <ChevronDown
-                        size={14}
-                        className={`transition-transform duration-300 ${isModelDropdownOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                  </div>
-                  {!prompt.trim() && !pastedImage ? (
-                    <button
-                      onClick={startListening}
-                      disabled={isGenerating}
-                      className={`w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition-all duration-300 active:scale-90 ${isListening ? "text-red-500 bg-red-100" : "text-[#444746] hover:bg-[#E1E5EA]"}`}
-                    >
-                      <Mic size={18} />
-                    </button>
-                  ) : (
-                    <button
-                      id="main-send-button"
-                      onClick={() => handleSend()}
-                      disabled={isGenerating}
-                      className="w-9 h-9 rounded-full bg-[#0064e0] hover:bg-[#0057c9] text-white flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 shadow-sm"
-                    >
-                      {isGenerating ? (
-                        <Loader2 size={15} className="animate-spin" />
-                      ) : (
-                        <Send
-                          size={15}
-                          className="relative right-[1px] bottom-[1px]"
-                        />
-                      )}
-                    </button>
+                      <button
+                        onClick={() => setPastedImage(null)}
+                        className="absolute -top-2 -right-2 bg-white rounded-full p-1 border border-[#E3E3E3] cursor-pointer hover:bg-slate-50 transition-all hover:scale-110 active:scale-90"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
                   )}
+                  <textarea
+                    ref={textareaRef}
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onPaste={handlePaste}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                    placeholder={
+                      isListening ? "Listening..." : "Message Zync..."
+                    }
+                    disabled={isGenerating}
+                    className="w-full bg-transparent px-4 pt-3 pb-2 resize-none outline-none max-h-[160px] text-[16px] font-normal text-[#1F1F1F] placeholder-[#444746] transition-all duration-300"
+                    rows="1"
+                  />
+                  <div className="flex justify-between items-center px-2 pb-1.5 pt-1">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setIsAttachMenuOpen(!isAttachMenuOpen)}
+                        className="w-8 h-8 rounded-full bg-transparent text-[#444746] flex items-center justify-center hover:bg-[#E1E5EA] transition-all duration-300 cursor-pointer active:scale-90"
+                      >
+                        <Plus
+                          size={16}
+                          className={`transition-transform duration-300 ${isAttachMenuOpen ? "rotate-45" : ""}`}
+                        />
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          setIsModelDropdownOpen(!isModelDropdownOpen)
+                        }
+                        className="px-3 py-1.5 bg-transparent rounded-full flex items-center gap-2 text-[13px] font-medium text-[#444746] hover:bg-[#E1E5EA] transition-all duration-300 cursor-pointer active:scale-95"
+                      >
+                        <img
+                          src="/favicon.svg"
+                          alt="Model"
+                          className="w-[14px] h-[14px]"
+                        />
+                        {aiModels.find((m) => m.id === selectedModel)?.name}
+                        <ChevronDown
+                          size={14}
+                          className={`transition-transform duration-300 ${isModelDropdownOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    </div>
+                    {!prompt.trim() && !pastedImage ? (
+                      <button
+                        onClick={startListening}
+                        disabled={isGenerating}
+                        className={`w-9 h-9 flex items-center justify-center rounded-full cursor-pointer transition-all duration-300 active:scale-90 ${isListening ? "text-red-500 bg-red-100" : "text-[#444746] hover:bg-[#E1E5EA]"}`}
+                      >
+                        <Mic size={18} />
+                      </button>
+                    ) : (
+                      <button
+                        id="main-send-button"
+                        onClick={() => handleSend()}
+                        disabled={isGenerating}
+                        className="w-9 h-9 rounded-full bg-[#0064e0] hover:bg-[#0057c9] text-white flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 shadow-sm"
+                      >
+                        {isGenerating ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <Send
+                            size={15}
+                            className="relative right-[1px] bottom-[1px]"
+                          />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
+                <p className="text-center text-[12px] text-[#444746] mt-3 font-normal animate-fade-in">
+                  Zync AI can make mistakes. Consider verifying important info.
+                </p>
               </div>
-              <p className="text-center text-[12px] text-[#444746] mt-3 font-normal animate-fade-in">
-                Zync AI can make mistakes. Consider verifying important info.
-              </p>
             </div>
-          </div>
-        )}
+          )}
       </main>
     </div>
   );
