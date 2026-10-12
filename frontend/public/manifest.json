@@ -1,22 +1,22 @@
 {
-  "name": "CapCraft AI",
-  "short_name": "CapCraft",
-  "description": "Generate viral, platform-ready captions in seconds.",
+  "name": "Zync AI",
+  "short_name": "Zync",
+  "description": "The ultimate all-in-one AI suite for intelligent chat, content creation, and smart workflows.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0064e0",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/favicon.svg",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

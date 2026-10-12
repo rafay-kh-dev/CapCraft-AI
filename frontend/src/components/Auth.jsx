@@ -51,7 +51,7 @@ const Auth = ({ onLogin }) => {
         const data = await backendRes.json();
 
         if (data.success) {
-          localStorage.setItem("capcraft_user", JSON.stringify(data.user));
+          localStorage.setItem("zync_user", JSON.stringify(data.user)); // Zync update
           if (onLogin) onLogin(data.user);
         } else {
           setErrorMsg(data.message);
@@ -90,7 +90,7 @@ const Auth = ({ onLogin }) => {
         const data = await backendRes.json();
 
         if (data.success) {
-          localStorage.setItem("capcraft_user", JSON.stringify(data.user));
+          localStorage.setItem("zync_user", JSON.stringify(data.user)); // Zync update
           if (onLogin) onLogin(data.user);
         } else {
           setErrorMsg(data.message);
@@ -123,7 +123,7 @@ const Auth = ({ onLogin }) => {
 
       if (data.success) {
         if (isLogin) {
-          localStorage.setItem("capcraft_user", JSON.stringify(data.user));
+          localStorage.setItem("zync_user", JSON.stringify(data.user)); // Zync update
           if (onLogin) onLogin(data.user);
         } else {
           setIsLogin(true);
@@ -154,7 +154,7 @@ const Auth = ({ onLogin }) => {
         <div className="flex flex-col justify-center flex-grow max-w-[480px] relative z-10">
           <img
             src="/favicon.svg"
-            alt="CapCraft AI"
+            alt="Zync AI" // Zync update
             className="w-12 h-12 mb-10 shadow-sm rounded-xl"
           />
 
@@ -199,7 +199,7 @@ const Auth = ({ onLogin }) => {
           <div className="flex lg:hidden justify-center mb-6">
             <img
               src="/favicon.svg"
-              alt="CapCraft AI"
+              alt="Zync AI" // Zync update
               className="w-12 h-12 rounded-xl shadow-sm"
             />
           </div>
@@ -208,7 +208,7 @@ const Auth = ({ onLogin }) => {
             <h2 className="text-[24px] sm:text-[26px] font-bold tracking-tight mb-1 text-slate-900">
               {isLogin ? (
                 <>
-                  Log in to CapCraft{" "}
+                  Log in to Zync {/* Zync update */}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#0064e0] to-[#60a5fa]">
                     AI
                   </span>
