@@ -123,11 +123,7 @@ const ChatArea = ({
   const handleGenerateCaption = () => {
     if (!topicInput.trim()) return;
     const finalPrompt = `Write a ${selectedTone.toLowerCase()} caption for ${selectedPlatform}. The post is about: ${topicInput}`;
-    setPrompt(finalPrompt);
-    setTimeout(() => {
-      const sendButton = document.getElementById("main-send-button");
-      if (sendButton) sendButton.click();
-    }, 50);
+    handleSendManual(finalPrompt);
   };
 
   if (messages.length === 0 && activeTab === "caption") {
@@ -238,10 +234,14 @@ const ChatArea = ({
               <div className="flex justify-end pt-1.5 px-1 pb-0.5">
                 <button
                   onClick={handleGenerateCaption}
-                  disabled={!topicInput.trim()}
+                  disabled={!topicInput.trim() || isGenerating}
                   className="flex items-center gap-1.5 bg-[#0064e0] hover:bg-[#0057c9] disabled:bg-[#E3E3E3] disabled:text-[#444746] text-white rounded-[10px] px-5 py-2 transition-all duration-300 active:scale-95 font-medium text-[13px] cursor-pointer"
                 >
-                  Generate{" "}
+                  {isGenerating ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    "Generate"
+                  )}{" "}
                   <ArrowRight
                     size={14}
                     strokeWidth={2.5}
@@ -324,8 +324,10 @@ const ChatArea = ({
                   />
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row w-full gap-4 pt-1.5">
-                <div className="flex-1 markdown-body min-w-0">
+
+              {/* YAHA COPY BUTTON KO NICHE SET KIYA GAYA HAI */}
+              <div className="flex flex-col w-full pt-1.5">
+                <div className="markdown-body min-w-0">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
@@ -362,19 +364,24 @@ const ChatArea = ({
                     {msg.content}
                   </ReactMarkdown>
                 </div>
-                <button
-                  onClick={() => copyToClipboard(msg.content, idx)}
-                  className="shrink-0 p-2 text-[#444746] hover:bg-[#F0F4F9] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 active:scale-90 cursor-pointer"
-                >
-                  {copiedIndex === idx ? (
-                    <CheckCircle2 size={16} className="text-emerald-600" />
-                  ) : (
-                    <Copy
-                      size={16}
-                      className="hover:scale-110 transition-transform"
-                    />
-                  )}
-                </button>
+
+                {/* ACTION BAR AT THE BOTTOM */}
+                <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -ml-1.5">
+                  <button
+                    onClick={() => copyToClipboard(msg.content, idx)}
+                    className="p-1.5 text-[#444746] hover:bg-[#F0F4F9] rounded-md transition-all duration-300 active:scale-90 cursor-pointer"
+                    title="Copy"
+                  >
+                    {copiedIndex === idx ? (
+                      <CheckCircle2 size={16} className="text-emerald-600" />
+                    ) : (
+                      <Copy
+                        size={16}
+                        className="hover:scale-110 transition-transform"
+                      />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}

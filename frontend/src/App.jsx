@@ -1,31 +1,49 @@
 import React, { useState, useEffect } from "react";
-import Auth from "./components/Auth";
-import Dashboard from "./components/Dashboard";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import Auth from "./components/Auth"; // Path apne hisaab se check kar lein
+import Dashboard from "./components/Dashboard"; // Path apne hisaab se check kar lein
 
-function App() {
+const App = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("capcraft_user");
+    // Yahan humne 'zync_user' kar diya hai taake refresh par logout na ho
+    const storedUser = localStorage.getItem("zync_user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Session parse error");
+      }
     }
   }, []);
 
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
+
   const handleLogout = () => {
-    localStorage.removeItem("capcraft_user");
+    // Logout par bhi sahi key remove karni hai
+    localStorage.removeItem("zync_user");
     setUser(null);
   };
 
   return (
-    <>
-      {!user ? (
-        <Auth onLogin={(userData) => setUser(userData)} />
-      ) : (
-        <Dashboard user={user} onLogout={handleLogout} />
-      )}
-    </>
+    // Apna Google Client ID yahan zaroor dalein
+    <GoogleOAuthProvider
+      clientId={
+        import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID"
+      }
+    >
+      <div className="w-full min-h-screen bg-white">
+        {user ? (
+          <Dashboard user={user} onLogout={handleLogout} />
+        ) : (
+          <Auth onLogin={handleLogin} />
+        )}
+      </div>
+    </GoogleOAuthProvider>
   );
-}
+};
 
 export default App;

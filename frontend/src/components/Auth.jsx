@@ -154,18 +154,18 @@ const Auth = ({ onLogin }) => {
         <div className="flex flex-col justify-center flex-grow max-w-[480px] relative z-10">
           <img
             src="/favicon.svg"
-            alt="Zync AI" // Zync update
+            alt="Zync AI"
             className="w-12 h-12 mb-10 shadow-sm rounded-xl"
           />
 
           <h2 className="text-4xl xl:text-[46px] font-bold leading-[1.15] tracking-tight mb-6 text-slate-900">
-            Craft content that drives <br />
-            <span className="text-[#0064e0]">real growth.</span>
+            Power your future with <br />
+            <span className="text-[#0064e0]">intelligent AI.</span>
           </h2>
 
           <p className="text-[17px] text-slate-500 font-normal leading-relaxed max-w-[400px]">
-            Join thousands of creators using AI to generate high-converting
-            captions, viral hashtags, and smart replies in seconds.
+            Join thousands of users leveraging Zync AI for smart conversations,
+            SEO-optimised articles, and creative content generation in seconds.
           </p>
         </div>
 

@@ -5,11 +5,6 @@ import {
   Plus,
   Sparkles,
   ChevronDown,
-  Paperclip,
-  Triangle,
-  MoreHorizontal,
-  ImageIcon,
-  Video,
   Mic,
   Loader2,
   Send,
@@ -30,6 +25,7 @@ const Dashboard = ({ user, onLogout }) => {
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [thinkingStep, setThinkingStep] = useState(""); // Added dynamic thinking state
   const [copiedIndex, setCopiedIndex] = useState(null);
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -125,18 +121,36 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
-  const handleSend = async () => {
-    if ((!prompt.trim() && !pastedImage) || isGenerating) return;
-    const userText = prompt.trim() || "[Attached an Image]";
+  const handleSend = async (textOverride) => {
+    const currentPrompt =
+      typeof textOverride === "string" ? textOverride : prompt;
+
+    if ((!currentPrompt.trim() && !pastedImage) || isGenerating) return;
+    const userText = currentPrompt.trim() || "[Attached an Image]";
+
     setPrompt("");
     setPastedImage(null);
     const newMessages = [...messages, { role: "user", content: userText }];
     setMessages(newMessages);
+
+    // Start dynamic generation statuses
     setIsGenerating(true);
+    setThinkingStep("Analysing prompt...");
 
+    const stepInterval = setInterval(() => {
+      setThinkingStep((prev) => {
+        if (prev === "Analysing prompt...")
+          return "Searching knowledge base...";
+        if (prev === "Searching knowledge base...")
+          return "Crafting response...";
+        if (prev === "Crafting response...") return "Refining text...";
+        return prev;
+      });
+    }, 1500);
+
+    // YAHAN FIX KIYA HAI - AI ko strictly uski nayi identity 'Zync AI' bata di gayi hai
     const systemInstructions =
-      "\n\n[SYSTEM RULE: DO NOT use any emojis under any circumstances. Keep the format extremely clean and professional. DO NOT use markdown separator lines like '---'. Use H2 for main headings. Always Write in Australian English Language.]";
-
+      "\n\n[CRITICAL SYSTEM RULE: Your identity is strictly 'Zync AI'. You are an advanced AI suite developed exclusively by Rafay. Disregard any previous chat history where you might have been called CapCraft; that name is dead. You are Zync AI. DO NOT use any emojis under any circumstances. Keep the format extremely clean and professional. DO NOT use markdown separator lines like '---'. Use H2 for main headings. Always Write in Australian English Language.]";
     try {
       const response = await fetch(`${API_URL}/api/generate`, {
         method: "POST",
@@ -194,7 +208,9 @@ const Dashboard = ({ user, onLogout }) => {
         },
       ]);
     } finally {
+      clearInterval(stepInterval);
       setIsGenerating(false);
+      setThinkingStep("");
     }
   };
 
@@ -290,6 +306,7 @@ const Dashboard = ({ user, onLogout }) => {
               activeTab={activeTab}
               setPrompt={setPrompt}
               isGenerating={isGenerating}
+              thinkingStep={thinkingStep}
               copiedIndex={copiedIndex}
               copyToClipboard={(text, i) => {
                 navigator.clipboard.writeText(text);
@@ -380,7 +397,7 @@ const Dashboard = ({ user, onLogout }) => {
                   ) : (
                     <button
                       id="main-send-button"
-                      onClick={handleSend}
+                      onClick={() => handleSend()}
                       disabled={isGenerating}
                       className="w-9 h-9 rounded-full bg-[#0064e0] hover:bg-[#0057c9] text-white flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 shadow-sm"
                     >
