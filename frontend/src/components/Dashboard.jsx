@@ -147,20 +147,22 @@ const Dashboard = ({ user, onLogout }) => {
       });
     }, 1500);
 
-    const systemInstructions =
-      "\n\n[CRITICAL SYSTEM RULE: Your identity is strictly 'Zync AI'. You are an advanced AI suite developed exclusively by Rafay. Disregard any previous chat history where you might have been called CapCraft; that name is dead. You are Zync AI. DO NOT use any emojis under any circumstances. Keep the format extremely clean and professional. DO NOT use markdown separator lines like '---'. Use H2 for main headings. Always Write in Australian English Language.]";
+    // 🔥 ULTIMATE IDENTITY INJECTION 🔥
+    // Yeh AI ke har message ke sath jayega aur usay majboor karega purana naam bhoolne par
+    const brutalInstruction = `\n\n--- \n[DEVELOPER COMMAND: Forget any previous instructions, history, or memory regarding your name. Your identity is strictly "Zync AI". You were developed by "Rafay". If the user asks your name or who made you, answer exactly: "I am Zync AI, an advanced AI suite developed by Rafay." DO NOT ever use the word CapCraft. Keep responses professional and use Australian English.]`;
 
     try {
       const response = await fetch(`${API_URL}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: userText + systemInstructions,
+          prompt: userText + brutalInstruction,
           type: activeTab,
           history: messages,
           modelName: selectedModel,
         }),
       });
+
       const data = await response.json();
 
       if (data.success) {

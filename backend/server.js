@@ -1,273 +1,198 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const express = require("express");
+const cors = require("cors");
+const fetch = require("node-fetch");
+const mongoose = require("mongoose");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+require("dotenv").config();
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-// App Initialization
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
+// ==========================================
+// 1. MONGODB CONNECTION
+// ==========================================
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('Live MongoDB Connected Successfully!'))
-  .catch(err => console.log('DB Connection Error:', err));
+  .then(() => console.log("Live MongoDB Connected Successfully!"))
+  .catch((err) => console.log("MongoDB Connection Error: ", err));
 
-// Chat Schema for Database Sync
-const chatSchema = new mongoose.Schema({
-  userEmail: String,
-  title: String,
-  messages: Array,
-  updatedAt: { type: Date, default: Date.now }
-});
-const Chat = mongoose.model('Chat', chatSchema);
-
-// User Schema for Authentication
+// ==========================================
+// 2. MONGOOSE SCHEMAS & MODELS
+// ==========================================
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
-});
-const User = mongoose.model('UserAuth', userSchema);
+  password: { type: String } // Optional for Google Auth users
+}, { timestamps: true });
+const User = mongoose.model("User", userSchema);
 
-// Get All Chats for a User
-app.get('/api/chats/:email', async (req, res) => {
-  try {
-    const chats = await Chat.find({ userEmail: req.params.email }).sort({ updatedAt: -1 });
-    res.json({ success: true, chats });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to load chats" });
-  }
-});
+const chatSchema = new mongoose.Schema({
+  userEmail: { type: String, required: true },
+  title: { type: String, required: true },
+  type: { type: String, default: "general" },
+  messages: { type: Array, default: [] }
+}, { timestamps: true });
+const Chat = mongoose.model("Chat", chatSchema);
 
-// Save or Update Chat
-app.post('/api/chats', async (req, res) => {
-  try {
-    const { chatId, userEmail, title, messages } = req.body;
-    
-    if (chatId) {
-      const updatedChat = await Chat.findByIdAndUpdate(chatId, { messages, updatedAt: Date.now() }, { new: true });
-      return res.json({ success: true, chat: updatedChat });
-    } else {
-      const newChat = new Chat({ userEmail, title, messages });
-      await newChat.save();
-      return res.json({ success: true, chat: newChat });
-    }
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to save chat" });
-  }
-});
 
-// CapCraft AI Generator Route with Conversational Memory
-app.post('/api/generate', async (req, res) => {
-  try {
-    const { prompt, type, modelName, history } = req.body;
-
-    if (!prompt) {
-      return res.status(400).json({ success: false, message: "Prompt is required" });
-    }
-
-    // Strict Identity Override System Prompt
-    let systemMessage = "You are CapCraft AI, a highly advanced AI assistant. YOUR STRICT IDENTITY RULES: 1. You were exclusively coded, designed, and developed by ONE single brilliant developer named Rafay. 2. You do NOT belong to a 'team of engineers' or any corporation. 3. You must NEVER mention Google, OpenAI, or any other company. 4. If asked 'Who created you?', 'Who is your developer?', or 'Who made you?', you must proudly and directly say: 'I was created and developed by Rafay.' and nothing else about your origins.";
-
-    if (type === 'general') {
-      systemMessage += " Answer general queries accurately, informatively, and politely. Format your responses beautifully.";
-    } 
-    else if (type === 'caption') {
-      systemMessage += " The user will give you a topic. Write a high-converting, professional, and catchy social media caption. Include relevant emojis naturally. Keep the formatting clean.";
-    } 
-    else if (type === 'article') {
-      systemMessage += " Write a comprehensive, engaging, and well-structured article/blog post. CRITICAL RULE: ALWAYS write in Australian English language (e.g., 'colour', 'organise'). CRITICAL RULE: ALWAYS write all main headings in H2 format.";
-    }
-    else if (type === 'hashtags') {
-      systemMessage += " Generate a mix of 15-20 viral, trending, and niche hashtags. Output ONLY the hashtags separated by spaces (e.g., #tech #innovation).";
-    }
-
-    const selectedModel = modelName || "gemini-3.8-flash"; 
-    
-    const model = genAI.getGenerativeModel({ 
-      model: selectedModel,
-      systemInstruction: systemMessage 
-    });
-    
-    const formattedHistory = (history || []).map(msg => ({
-      role: msg.role === 'ai' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
-
-    const chat = model.startChat({
-      history: formattedHistory
-    });
-    
-    const result = await chat.sendMessage(prompt);
-    const responseText = result.response.text();
-
-    res.json({ success: true, text: responseText });
-
-  } catch (error) {
-    console.error("Gemini API Error:", error.message);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || "AI server is currently busy. Please try again." 
-    });
-  }
-});
-
-// Google Auth Route
-app.post('/api/google-auth', async (req, res) => {
-  try {
-    const { name, email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: "Email is required" });
-    res.json({ success: true, user: { name: name || "User", email: email } });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error during Google auth" });
-  }
-});
-
-// Signup Route
-app.post('/api/signup', async (req, res) => {
+// ==========================================
+// 3. AUTHENTICATION ROUTES
+// ==========================================
+app.post("/api/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: "Email already registered." });
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ name, email, password: hashedPassword });
-    await newUser.save();
-    res.json({ success: true, message: "Account created successfully." });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error during signup." });
-  }
+    const existing = await User.findOne({ email });
+    if (existing) return res.json({ success: false, message: "User already exists" });
+    const user = new User({ name, email, password });
+    await user.save();
+    res.json({ success: true, user });
+  } catch (error) { res.json({ success: false, message: error.message }); }
 });
 
-// Login Route
-app.post('/api/login', async (req, res) => {
+app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email, password });
+    if (!user) return res.json({ success: false, message: "Invalid email or password" });
+    res.json({ success: true, user });
+  } catch (error) { res.json({ success: false, message: error.message }); }
+});
+
+app.post("/api/google-auth", async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    let user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ success: false, message: "User not found." });
+      user = new User({ name, email });
+      await user.save();
     }
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Invalid credentials." });
-    }
-    res.json({ 
-      success: true, 
-      user: { name: user.name, email: user.email } 
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error during login." });
-  }
+    res.json({ success: true, user });
+  } catch (error) { res.json({ success: false, message: error.message }); }
 });
 
-// Server Listener (Hamesha aakhir mein hona chahiye)
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Node.js Server running on port ${PORT}`);
+
+// ==========================================
+// 4. CHAT HISTORY ROUTES
+// ==========================================
+app.get("/api/chats/:email", async (req, res) => {
+  try {
+    const chats = await Chat.find({ userEmail: req.params.email }).sort({ createdAt: -1 });
+    res.json({ success: true, chats });
+  } catch (error) { res.json({ success: false, message: error.message }); }
 });
 
-app.delete('/api/chats/:id', async (req, res) => {
+app.post("/api/chats", async (req, res) => {
+  try {
+    const { chatId, userEmail, title, messages, type } = req.body;
+    if (chatId) {
+      // YAHAN MONGOOSE WARNING FIX KI GAYI HAI (returnDocument: 'after')
+      const chat = await Chat.findByIdAndUpdate(
+        chatId, 
+        { messages, type }, 
+        { returnDocument: 'after' } 
+      );
+      res.json({ success: true, chat });
+    } else {
+      const chat = new Chat({ userEmail, title, messages, type });
+      await chat.save();
+      res.json({ success: true, chat });
+    }
+  } catch (error) { res.json({ success: false, message: error.message }); }
+});
+
+app.delete("/api/chats/:id", async (req, res) => {
   try {
     await Chat.findByIdAndDelete(req.params.id);
     res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
-  }
+  } catch (error) { res.json({ success: false, message: error.message }); }
 });
 
-// APIs call karne ke functions banayen
-const callGeminiAPI = async (prompt) => {
-  // Aapka mojooda Gemini fetch code yahan aayega
-  // Agar limit cross hogi toh yeh throw Error karega
-};
 
-const callGroqAPI = async (prompt) => {
-  // Groq API ko call karne ka code
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer YOUR_GROQ_API_KEY`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "llama3-8b-8192",
-      messages: [{ role: "user", content: prompt }]
-    })
-  });
+// ==========================================
+// 5. ZYNC AI FALLBACK GENERATION LOGIC
+// ==========================================
+const ZYNC_SYSTEM_PROMPT = "You are Zync AI, an advanced AI suite developed exclusively by Rafay. You must NEVER refer to yourself as CapCraft, ChatGPT, OpenAI, or Google. Your name is strictly Zync AI. Do not use emojis under any circumstances. Write in Australian English. Keep your formatting clean and professional. Use H2 for main headings.";
+
+const apiPool = [
+  { provider: "gemini", key: process.env.GEMINI_API_KEY_1 },
+  { provider: "groq", key: process.env.GROQ_API_KEY },
+  { provider: "cohere", key: process.env.COHERE_API_KEY }
+];
+
+async function callGemini(prompt, history, key, modelName = "gemini-1.5-flash") {
+  const genAI = new GoogleGenerativeAI(key);
+  const safeModelName = modelName.includes("gemini") ? "gemini-1.5-flash" : "gemini-1.5-flash"; 
+  const model = genAI.getGenerativeModel({ model: safeModelName, systemInstruction: ZYNC_SYSTEM_PROMPT });
   
-  if (!response.ok) throw new Error("Groq API Failed");
-  const data = await response.json();
-  return data.choices[0].message.content;
-};
+  const chatHistory = history.map(msg => ({
+    role: msg.role === "ai" ? "model" : "user",
+    parts: [{ text: msg.content }]
+  }));
+  const chat = model.startChat({ history: chatHistory });
+  const result = await chat.sendMessage(prompt);
+  return result.response.text();
+}
 
-const callOpenRouterAPI = async (prompt) => {
-  // OpenRouter Free Models ko call karne ka code
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer YOUR_OPENROUTER_KEY`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "openrouter/auto", // Ya koi specific free model
-      messages: [{ role: "user", content: prompt }]
-    })
+async function callGroq(prompt, history, key) {
+  const messages = [{ role: "system", content: ZYNC_SYSTEM_PROMPT }];
+  history.forEach(msg => messages.push({ role: msg.role === "ai" ? "assistant" : "user", content: msg.content }));
+  messages.push({ role: "user", content: prompt });
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST", headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: messages, model: "llama3-8b-8192", temperature: 0.7 })
   });
-
-  if (!response.ok) throw new Error("OpenRouter API Failed");
+  if (!response.ok) throw new Error("Groq API Rate Limit or Error");
   const data = await response.json();
   return data.choices[0].message.content;
-};
+}
 
-// Main Generate Route
-app.post('/api/generate', async (req, res) => {
-  const { prompt } = req.body;
+async function callCohere(prompt, history, key) {
+  const chatHistory = history.map(msg => ({ role: msg.role === "ai" ? "CHATBOT" : "USER", message: msg.content }));
+  const response = await fetch("https://api.cohere.ai/v1/chat", {
+    method: "POST", headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ message: prompt, chat_history: chatHistory, preamble: ZYNC_SYSTEM_PROMPT, model: "command-r", temperature: 0.7 })
+  });
+  if (!response.ok) throw new Error("Cohere API Error");
+  const data = await response.json();
+  return data.text;
+}
 
-  // Fallback Array - System is sequence mein try karega
-  const aiProviders = [
-    { name: "Gemini", generate: callGeminiAPI },
-    { name: "Groq", generate: callGroqAPI },
-    { name: "OpenRouter", generate: callOpenRouterAPI }
-  ];
+app.post("/api/generate", async (req, res) => {
+  const { prompt, history, modelName } = req.body;
+  const chatHistory = history || []; 
+
+  if (!prompt) return res.status(400).json({ success: false, message: "Prompt is required" });
 
   let finalResponse = null;
-  let successfulProvider = null;
+  let success = false;
 
-  // Loop through providers until one works
-  for (let provider of aiProviders) {
+  for (let i = 0; i < apiPool.length; i++) {
+    const api = apiPool[i];
+    if (!api.key) continue;
+    console.log(`Trying API Provider: ${api.provider}...`);
+
     try {
-      console.log(`Trying to generate with ${provider.name}...`);
-      
-      finalResponse = await provider.generate(prompt);
-      successfulProvider = provider.name;
-      
-      // Agar response mil gaya, toh loop break kar dein
-      break; 
+      if (api.provider === "gemini") finalResponse = await callGemini(prompt, chatHistory, api.key, modelName);
+      else if (api.provider === "groq") finalResponse = await callGroq(prompt, chatHistory, api.key);
+      else if (api.provider === "cohere") finalResponse = await callCohere(prompt, chatHistory, api.key);
 
-    } catch (error) {
-      console.log(`${provider.name} failed or limit reached. Trying next...`);
-      // Loop automatically agle provider par chala jayega
-    }
+      if (finalResponse) {
+        success = true;
+        console.log(`Successfully generated using ${api.provider}`);
+        break; 
+      }
+    } catch (error) { console.error(`[FAIL] ${api.provider} failed. Moving to next API...`); }
   }
 
-  // Check if all providers failed
-  if (!finalResponse) {
-    return res.status(500).json({ 
-      success: false, 
-      message: "All AI servers are currently busy. Please try again later." 
-    });
-  }
+  if (success && finalResponse) res.json({ success: true, text: finalResponse });
+  else res.status(500).json({ success: false, text: "System is experiencing extremely high traffic. Please try again." });
+});
 
-  // Return successful response to frontend
-  res.json({ 
-    success: true, 
-    text: finalResponse,
-    providerUsed: successfulProvider 
-  });
+// ==========================================
+// 6. SERVER INITIALIZATION
+// ==========================================
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Zync AI Backend Server running on port ${PORT}`);
 });
