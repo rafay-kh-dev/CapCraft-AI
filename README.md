@@ -2,7 +2,7 @@
 
 Zync AI is a high-performance, enterprise-grade AI web application and Progressive Web App (PWA) designed to provide uninterrupted access to multi-modal AI capabilities. Built with a resilient multi-provider fallback architecture, Zync AI combines intelligent conversational interfaces, content generation suites, and automated technical SEO tools into a single, cohesive SaaS platform.
 
----
+![Zync AI](./frontend/public/screenshot.png)
 
 ## Key Features
 
